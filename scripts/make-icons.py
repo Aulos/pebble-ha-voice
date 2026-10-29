@@ -1,80 +1,67 @@
 #!/usr/bin/env python3
-"""Draws the app icons: a house with a microphone in it.
+"""Renders the app icons from resources/icon.svg.
 
-    scripts/make-icons.py
+    python3 scripts/make-icons.py
 
-The house says Home Assistant, the microphone says voice. One geometry is
-shared by both sizes, so the small icon and the large one are the same mark:
-the 25 pixel menu icon is drawn straight onto the pixel grid, because scaling
-it down would grey its one and two pixel strokes, and the 48 pixel icon is the
-same drawing at 8x, scaled down, which gives it clean edges.
+The SVG is the source of truth: it is drawn on the 25 pixel grid the watch's app
+menu uses, with every edge on a whole pixel. The 25 pixel menu icon is that
+drawing rendered straight at 25 pixels, so it stays sharp; the 48 pixel icon is
+rendered four times larger and scaled down, which gives it clean edges.
 
-Output: resources/images/menu_icon.png (the app menu on the watch) and
-app_icon.png (the phone app and store listing).
+Needs cairosvg:  python3 -m venv .venv && .venv/bin/pip install cairosvg
+Then run:        .venv/bin/python scripts/make-icons.py
+
+Output: resources/images/menu_icon.png (the app menu on the watch),
+resources/images/app_icon.png (48 pixels, packed into the app) and
+docs/store/icon-144.png (the appstore listing's icon, which is what the phone
+app draws for an app it installed from the store).
 """
+import io
 import os
+import sys
 
-from PIL import Image, ImageDraw
+from PIL import Image
 
-SCALE = 8
-CYAN = (0, 170, 255, 255)
-BLACK = (0, 0, 0, 255)
+HERE = os.path.dirname(os.path.abspath(__file__))
+SVG = os.path.join(HERE, "..", "resources", "icon.svg")
+OUT = os.path.join(HERE, "..", "resources", "images")
 
-# The mark is designed on a 25 pixel grid; every other size is this grid scaled.
-GRID = 25
+MENU_SIZE = 25
+APP_SIZE = 48
+STORE_SIZE = 144
+SUPERSAMPLE = 4
 
 
-def draw_mark(n):
-    """Draws the house and microphone onto an n by n canvas."""
-    s = n / GRID
-    image = Image.new("RGBA", (n, n), BLACK)
-    d = ImageDraw.Draw(image)
-
-    def box(x0, y0, x1, y1, fill=CYAN):
-        # A rectangle given in grid units, grown by one pixel on its far edges so
-        # that neighbours touch instead of leaving a hairline gap.
-        d.rectangle([x0 * s, y0 * s, (x1 + 1) * s - 1, (y1 + 1) * s - 1], fill=fill)
-
-    # Roof: two strokes from the apex, run a little past the tops of the walls so
-    # the joint is solid rather than showing a notch.
-    stroke = max(1, round(2 * s))
-    d.line([(12 * s, 2 * s), (3.6 * s, 11 * s)], fill=CYAN, width=stroke)
-    d.line([(12 * s, 2 * s), (20.4 * s, 11 * s)], fill=CYAN, width=stroke)
-
-    # Walls and floor. The black square behind them matters: the watch's app menu
-    # draws the selected row in cyan, and a transparent icon would vanish in it.
-    box(4, 10, 5, 21)
-    box(19, 10, 20, 21)
-    box(4, 21, 20, 22)
-
-    # Microphone: a capsule with three grill bars, then a stem and a base. Three
-    # bars, not two: at 25 pixels two wide bars leave only a one pixel edge on
-    # each side and the capsule falls apart into stripes.
-    d.rounded_rectangle(
-        [9 * s, 11 * s, (15 + 1) * s - 1, (18 + 1) * s - 1],
-        radius=2 * s,
-        fill=CYAN,
-    )
-    for y in (12, 14, 16):
-        box(11, y, 13, y, fill=BLACK)
-    box(11, 18, 13, 20)
-    box(9, 20, 15, 21)
-
-    return image
+def render(size):
+    """Rasterises the SVG at `size` by `size` pixels."""
+    try:
+        import cairosvg
+    except ImportError:
+        sys.exit(
+            "cairosvg is missing. Run:\n"
+            "  python3 -m venv .venv && .venv/bin/pip install cairosvg\n"
+            "  .venv/bin/python scripts/make-icons.py"
+        )
+    png = cairosvg.svg2png(url=SVG, output_width=size, output_height=size)
+    return Image.open(io.BytesIO(png)).convert("RGBA")
 
 
 def main():
-    here = os.path.dirname(os.path.abspath(__file__))
-    out = os.path.join(here, "..", "resources", "images")
-    os.makedirs(out, exist_ok=True)
+    os.makedirs(OUT, exist_ok=True)
 
-    menu = draw_mark(GRID)
-    menu.save(os.path.join(out, "menu_icon.png"))
-    print("wrote", os.path.normpath(os.path.join(out, "menu_icon.png")), "(25x25)")
+    menu = render(MENU_SIZE)
+    menu.save(os.path.join(OUT, "menu_icon.png"))
+    print("wrote", os.path.normpath(os.path.join(OUT, "menu_icon.png")), f"({MENU_SIZE}x{MENU_SIZE})")
 
-    big = draw_mark(GRID * SCALE).resize((48, 48), Image.LANCZOS)
-    big.save(os.path.join(out, "app_icon.png"))
-    print("wrote", os.path.normpath(os.path.join(out, "app_icon.png")), "(48x48)")
+    big = render(APP_SIZE * SUPERSAMPLE).resize((APP_SIZE, APP_SIZE), Image.LANCZOS)
+    big.save(os.path.join(OUT, "app_icon.png"))
+    print("wrote", os.path.normpath(os.path.join(OUT, "app_icon.png")), f"({APP_SIZE}x{APP_SIZE})")
+
+    store_dir = os.path.join(HERE, "..", "docs", "store")
+    os.makedirs(store_dir, exist_ok=True)
+    store = render(STORE_SIZE * SUPERSAMPLE).resize((STORE_SIZE, STORE_SIZE), Image.LANCZOS)
+    store.save(os.path.join(store_dir, "icon-144.png"))
+    print("wrote", os.path.normpath(os.path.join(store_dir, "icon-144.png")), f"({STORE_SIZE}x{STORE_SIZE})")
 
 
 if __name__ == "__main__":

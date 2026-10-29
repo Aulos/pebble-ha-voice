@@ -9,3 +9,4 @@ node_modules/
 .lock-waf*
 .waf-*
 .DS_Store
+.venv/
