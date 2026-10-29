@@ -11,8 +11,8 @@ name comes from your developer profile).
 | App name | `HA Voice` |
 | Type | Watch App (not a watchface) |
 | Category | Tools & Utilities |
-| Website | your choice; the project has no page yet, so leave it out or point it at a source repository |
-| Source code | optional; add the repository address if you publish it |
+| Website | https://github.com/Aulos/pebble-ha-voice |
+| Source code | https://github.com/Aulos/pebble-ha-voice |
 | Visibility | public |
 
 ## Short description (one line, for lists and search results)

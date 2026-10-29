@@ -1,5 +1,7 @@
 # HA Voice
 
+<https://github.com/Aulos/pebble-ha-voice>
+
 Ask Home Assistant from a Pebble Time 2. Press the middle button, say what you
 want, and read the answer on the watch. There is no voice output: the reply is
 text only, which is what a watch with no speaker can do well.
