@@ -36,6 +36,10 @@ bool assistant_has_answer(void);
 // True once the phone reports that a Home Assistant address and token are set.
 bool assistant_is_configured(void);
 
+// Asks the phone to check the address and token, and shows the result like an
+// answer.
+void assistant_test_connection(void);
+
 // Asks the phone again whether an address and token are set.
 void assistant_refresh_config(void);
 

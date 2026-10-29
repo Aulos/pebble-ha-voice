@@ -17,7 +17,7 @@ static MenuLayer *s_menu;
 static TextLayer *s_header;
 
 static uint16_t prv_num_rows(MenuLayer *menu, uint16_t section, void *context) {
-  return 2;
+  return 3;
 }
 
 static void prv_draw_row(GContext *ctx, const Layer *cell, MenuIndex *index, void *context) {
@@ -32,8 +32,11 @@ static void prv_draw_row(GContext *ctx, const Layer *cell, MenuIndex *index, voi
   GColor title_color = selected ? THEME_GLYPH : THEME_TITLE;
   GColor subtitle_color = selected ? THEME_GLYPH : THEME_DIM;
 
-  const char *title = index->row == 0 ? "Ask again" : "Settings";
-  const char *subtitle = index->row == 0 ? "Talk to Home Assistant" : "Address and token";
+  const char *titles[] = {"Ask again", "Settings", "Test connection"};
+  const char *subtitles[] = {"Talk to Home Assistant", "Address and token, on the phone",
+                             "Check the address and token"};
+  const char *title = titles[index->row];
+  const char *subtitle = subtitles[index->row];
 
   graphics_context_set_text_color(ctx, title_color);
   graphics_draw_text(ctx, title, fonts_get_system_font(FONT_KEY_GOTHIC_18),
@@ -51,11 +54,18 @@ static int16_t prv_row_height(MenuLayer *menu, MenuIndex *index, void *context) 
 }
 
 static void prv_select(MenuLayer *menu, MenuIndex *index, void *context) {
-  if (index->row == 0) {
-    window_stack_pop(false);
-    assistant_start();
-  } else {
-    assistant_open_settings();
+  switch (index->row) {
+    case 0:
+      window_stack_pop(false);
+      assistant_start();
+      break;
+    case 1:
+      assistant_open_settings();
+      break;
+    default:
+      window_stack_pop(false);
+      assistant_test_connection();
+      break;
   }
 }
 

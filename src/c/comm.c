@@ -10,6 +10,7 @@
 #define CMD_QUESTION 1
 #define CMD_PING 2
 #define CMD_OPEN_SETTINGS 3
+#define CMD_TEST 4
 
 #define CMD_STATUS 10
 #define CMD_ANSWER 11
@@ -27,6 +28,8 @@ static uint32_t s_out_id;
 static uint16_t s_out_total;
 static uint16_t s_out_next;
 static bool s_out_active;
+// A test message is not a question, but its failure is still worth reporting.
+static bool s_out_expect_reply;
 
 // Incoming answer assembly.
 static char s_in_text[ANSWER_MAX];
@@ -39,6 +42,39 @@ static bool s_in_active;
 
 static bool s_configured;
 
+// The outbox is busy while another message is still on its way to the phone.
+// A user action must not be lost because of that, so it is tried again shortly.
+#define RETRY_DELAY_MS 300
+#define RETRY_ATTEMPTS 20
+
+static AppTimer *s_retry_timer;
+static uint8_t s_retry_left;
+static void (*s_retry_fn)(void);
+
+static void prv_retry_cb(void *context) {
+  s_retry_timer = NULL;
+  void (*fn)(void) = s_retry_fn;
+  s_retry_fn = NULL;
+  if (fn) {
+    fn();
+  }
+}
+
+static void prv_retry_later(void (*fn)(void)) {
+  s_retry_fn = fn;
+  if (s_retry_timer) {
+    return;
+  }
+  if (s_retry_left == 0) {
+    if (s_handlers.on_error) {
+      s_handlers.on_error("Phone not connected", s_handlers.context);
+    }
+    return;
+  }
+  s_retry_left--;
+  s_retry_timer = app_timer_register(RETRY_DELAY_MS, prv_retry_cb, NULL);
+}
+
 // ---------------------------------------------------------------------------
 // Sending
 // ---------------------------------------------------------------------------
@@ -50,7 +86,7 @@ static void prv_send_next_chunk(void) {
 
   DictionaryIterator *iter;
   if (app_message_outbox_begin(&iter) != APP_MSG_OK) {
-    // Try again when the outbox frees up.
+    prv_retry_later(prv_send_next_chunk);
     return;
   }
 
@@ -82,23 +118,24 @@ static void prv_outbox_sent(DictionaryIterator *iter, void *context) {
 }
 
 static void prv_outbox_failed(DictionaryIterator *iter, AppMessageResult reason, void *context) {
-  // A lost question is worth showing. A lost ping or settings request is not:
-  // those happen whenever the phone is away, and the main screen already says
-  // that the app is not set up.
-  bool was_question = s_out_active;
+  // A lost question or test is worth showing. A lost ping or settings request is
+  // not: those happen whenever the phone is away, and the main screen already
+  // says that the app is not set up.
+  bool was_question = s_out_active || s_out_expect_reply;
   s_out_active = false;
+  s_out_expect_reply = false;
   if (was_question && s_handlers.on_error) {
     s_handlers.on_error("Phone not connected", s_handlers.context);
   }
 }
 
-static void prv_send_simple(int cmd) {
+static bool prv_send_simple(int cmd) {
   DictionaryIterator *iter;
   if (app_message_outbox_begin(&iter) != APP_MSG_OK) {
-    return;
+    return false;
   }
   dict_write_int32(iter, MESSAGE_KEY_cmd, cmd);
-  app_message_outbox_send();
+  return app_message_outbox_send() == APP_MSG_OK;
 }
 
 // ---------------------------------------------------------------------------
@@ -222,15 +259,21 @@ void comm_init(const CommHandlers *handlers) {
   app_message_register_outbox_sent(prv_outbox_sent);
   app_message_register_outbox_failed(prv_outbox_failed);
 
-  if (app_message_open(1024, 1024) == APP_MSG_OK) {
+  AppMessageResult open = app_message_open(1024, 1024);
+  if (open == APP_MSG_OK) {
     s_ready = true;
   } else {
     APP_LOG(APP_LOG_LEVEL_ERROR, "app_message_open failed");
+
   }
 }
 
 void comm_deinit(void) {
   app_message_deregister_callbacks();
+  if (s_retry_timer) {
+    app_timer_cancel(s_retry_timer);
+    s_retry_timer = NULL;
+  }
   s_ready = false;
 }
 
@@ -248,6 +291,8 @@ void comm_send_question(const char *text) {
   s_out_next = 0;
   s_out_id++;
   s_out_active = true;
+  s_out_expect_reply = true;
+  s_retry_left = RETRY_ATTEMPTS;
 
   prv_send_next_chunk();
 }
@@ -258,4 +303,20 @@ void comm_request_config_state(void) {
 
 void comm_open_settings(void) {
   prv_send_simple(CMD_OPEN_SETTINGS);
+}
+
+void comm_test_connection(void) {
+  s_retry_left = RETRY_ATTEMPTS;
+  s_out_expect_reply = true;
+
+  DictionaryIterator *iter;
+  if (app_message_outbox_begin(&iter) != APP_MSG_OK) {
+    prv_retry_later(comm_test_connection);
+    return;
+  }
+  dict_write_int32(iter, MESSAGE_KEY_cmd, CMD_TEST);
+  dict_write_int32(iter, MESSAGE_KEY_id, (int32_t)s_out_id);
+  dict_write_int32(iter, MESSAGE_KEY_seq, 0);
+  dict_write_int32(iter, MESSAGE_KEY_total, 1);
+  app_message_outbox_send();
 }

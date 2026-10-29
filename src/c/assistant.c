@@ -128,7 +128,6 @@ void assistant_init(void) {
     .on_config_state = prv_comm_config_state,
     .context = NULL,
   });
-  comm_request_config_state();
 }
 
 void assistant_deinit(void) {
@@ -202,6 +201,15 @@ bool assistant_has_answer(void) {
 
 bool assistant_is_configured(void) {
   return s_configured;
+}
+
+void assistant_test_connection(void) {
+  if (s_state == AssistantListening || s_state == AssistantThinking) {
+    return;
+  }
+  snprintf(s_question, sizeof(s_question), "Test connection");
+  s_answer[0] = '\0';
+  comm_test_connection();
 }
 
 void assistant_refresh_config(void) {

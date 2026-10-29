@@ -12,6 +12,7 @@ var REQUEST_TIMEOUT_MS = 20000;
 var CMD_QUESTION = 1;
 var CMD_PING = 2;
 var CMD_OPEN_SETTINGS = 3;
+var CMD_TEST = 4;
 var CMD_STATUS = 10;
 var CMD_ANSWER = 11;
 var CMD_CONFIG_STATE = 12;
@@ -180,6 +181,60 @@ function askHomeAssistant(id, question) {
   xhr.send(JSON.stringify(body));
 }
 
+// Checks that the address and token work, without asking Assist anything. The
+// settings page cannot do this itself: Home Assistant does not send the CORS
+// headers a browser page would need, while this code runs on the phone and is
+// not subject to them.
+function testConnection(id) {
+  var config = settings.read();
+  if (!settings.isConfigured(config)) {
+    sendStatus(id, STATUS_ERROR, 'Set the address and token in settings');
+    return;
+  }
+
+  var xhr = new XMLHttpRequest();
+  var finished = false;
+
+  function fail(message) {
+    if (finished) {
+      return;
+    }
+    finished = true;
+    sendStatus(id, STATUS_ERROR, message);
+  }
+
+  sendStatus(id, STATUS_THINKING);
+  xhr.open('GET', config.baseUrl + '/api/', true);
+  xhr.timeout = REQUEST_TIMEOUT_MS;
+  xhr.ontimeout = function () {
+    fail('Home Assistant timed out');
+  };
+  xhr.onerror = function () {
+    fail('Cannot reach Home Assistant');
+  };
+  xhr.onload = function () {
+    if (finished) {
+      return;
+    }
+    if (xhr.status === 401 || xhr.status === 403) {
+      fail('Token rejected (' + xhr.status + ')');
+      return;
+    }
+    if (xhr.status < 200 || xhr.status >= 300) {
+      fail('Home Assistant error ' + xhr.status);
+      return;
+    }
+    finished = true;
+    sendAnswer(id, 'Connected to Home Assistant.');
+  };
+  xhr.setRequestHeader('Authorization', 'Bearer ' + config.token);
+  try {
+    xhr.send();
+  } catch (e) {
+    fail('Phone could not send: ' + e);
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Incoming AppMessage
 // ---------------------------------------------------------------------------
@@ -219,6 +274,14 @@ function init() {
         break;
       case CMD_PING:
         sendConfigState();
+        break;
+      case CMD_TEST:
+        try {
+          testConnection(message.id || 0);
+        } catch (e) {
+          console.log('Test connection failed: ' + e);
+          sendStatus(message.id, STATUS_ERROR, 'Phone error: ' + e);
+        }
         break;
       case CMD_OPEN_SETTINGS:
         // The watch asked for the settings page; open it on the phone.

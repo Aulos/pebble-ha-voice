@@ -25,5 +25,8 @@ void comm_send_question(const char *text);
 // Asks the phone whether an address and token have been set.
 void comm_request_config_state(void);
 
+// Asks the phone to check that the address and token work.
+void comm_test_connection(void);
+
 // Opens the settings page on the phone.
 void comm_open_settings(void);

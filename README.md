@@ -14,9 +14,11 @@ text only, which is what a watch with no speaker can do well.
   press SELECT to start listening.
 - **Answer screen**: the question at the top, the reply below it in a scrolling
   area, and an ASK AGAIN footer. Tap the footer, press UP, or press BACK.
-- **Menu**: press DOWN or swipe down. It has *Ask again* and *Settings*.
+- **Menu**: press DOWN or swipe down. It has *Ask again*, *Settings* and
+  *Test connection*.
 - **Settings** are typed on the phone, never on the watch: the Home Assistant
-  address and a long-lived access token.
+  address and a long-lived access token. The watch has no keyboard, and a token
+  is too long to enter with buttons.
 
 Everything works with buttons and, on the Time 2, with touch.
 
@@ -42,10 +44,24 @@ pebble install --emulator emery       # to the emulator
 
 ## Set it up
 
-Open the app on the watch, press DOWN, and choose *Settings*. The settings page
-opens on the phone: enter the address (for example `http://homeassistant.local:8123`)
-and paste the token, then save. The watch shows **NOT SET UP** until both are
-set.
+Everything is entered on the phone. There are two ways to open the settings
+page, and both open the same page on the phone:
+
+1. **From the Pebble app, without touching the watch**: open the Pebble app on
+   the phone, go to *HA Voice*, and choose *Settings*.
+2. **From the watch**: press DOWN on the main screen and choose *Settings*. The
+   watch only asks the phone to open the page; nothing is typed on the watch.
+
+Enter the address (for example `http://homeassistant.local:8123`, with the port)
+and paste the token, then save. The page is stored inside the app and loaded
+from the phone, so there is nothing to host.
+
+The watch shows **NOT SET UP** until both are set.
+
+To check them, press DOWN on the main screen and choose *Test connection*. The
+watch shows *Connected to Home Assistant.*, or the reason it failed, such as
+*Token rejected (401)*. The test runs on the phone, because Home Assistant does
+not send the CORS headers that a browser page would need.
 
 ## How it fits together
 
