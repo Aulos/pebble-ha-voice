@@ -1,5 +1,7 @@
 #include "assistant.h"
 
+#include "comm.h"
+
 #define QUESTION_MAX 512
 #define ANSWER_MAX 1024
 #define ERROR_MAX 128
@@ -11,13 +13,18 @@ static AssistantAnswerHandler s_answer_handler;
 static void *s_answer_context;
 
 static DictationSession *s_dictation;
-static AppTimer *s_pending_timer;
 
 static char s_question[QUESTION_MAX];
 static char s_answer[ANSWER_MAX];
 static char s_error[ERROR_MAX];
 
 static void prv_request(void);
+static void prv_comm_thinking(void *context);
+static void prv_comm_answer(const char *text, void *context);
+static void prv_comm_error(const char *message, void *context);
+static void prv_comm_config_state(bool configured, void *context);
+
+static bool s_configured;
 
 static void prv_set_state(AssistantState state) {
   if (s_state == state) {
@@ -70,33 +77,56 @@ static void prv_dictation_callback(DictationSession *session, DictationSessionSt
   }
 }
 
-static void prv_answer_ready(void *context) {
-  s_pending_timer = NULL;
+static void prv_request(void) {
+  prv_set_state(AssistantThinking);
+  comm_send_question(s_question);
+}
+
+static void prv_comm_thinking(void *context) {
+  prv_set_state(AssistantThinking);
+}
+
+static void prv_comm_answer(const char *text, void *context) {
+  snprintf(s_answer, sizeof(s_answer), "%s", text ? text : "");
   prv_set_state(AssistantIdle);
   if (s_answer_handler) {
     s_answer_handler(s_answer_context);
   }
 }
 
-static void prv_request(void) {
-  prv_set_state(AssistantThinking);
-  // Placeholder backend until the phone bridge lands: echo the request so the
-  // screens can be exercised without a phone.
-  snprintf(s_answer, sizeof(s_answer), "You said: %s", s_question);
-  s_pending_timer = app_timer_register(600, prv_answer_ready, NULL);
+static void prv_comm_error(const char *message, void *context) {
+  prv_fail(message ? message : "Request failed");
+}
+
+static void prv_comm_config_state(bool configured, void *context) {
+  if (s_configured == configured) {
+    return;
+  }
+  s_configured = configured;
+  // Re-announce the current state so the screens redraw with the new answer to
+  // "is this set up?".
+  if (s_state_handler) {
+    s_state_handler(s_state, s_state_context);
+  }
 }
 
 void assistant_init(void) {
   s_question[0] = '\0';
   s_answer[0] = '\0';
   s_error[0] = '\0';
+
+  comm_init(&(CommHandlers){
+    .on_thinking = prv_comm_thinking,
+    .on_answer = prv_comm_answer,
+    .on_error = prv_comm_error,
+    .on_config_state = prv_comm_config_state,
+    .context = NULL,
+  });
+  comm_request_config_state();
 }
 
 void assistant_deinit(void) {
-  if (s_pending_timer) {
-    app_timer_cancel(s_pending_timer);
-    s_pending_timer = NULL;
-  }
+  comm_deinit();
   if (s_dictation) {
     dictation_session_destroy(s_dictation);
     s_dictation = NULL;
@@ -128,10 +158,6 @@ void assistant_start(void) {
 }
 
 void assistant_cancel(void) {
-  if (s_pending_timer) {
-    app_timer_cancel(s_pending_timer);
-    s_pending_timer = NULL;
-  }
   if (s_state == AssistantListening && s_dictation) {
     dictation_session_stop(s_dictation);
   }
@@ -166,4 +192,16 @@ const char *assistant_error(void) {
 
 bool assistant_has_answer(void) {
   return s_answer[0] != '\0';
+}
+
+bool assistant_is_configured(void) {
+  return s_configured;
+}
+
+void assistant_refresh_config(void) {
+  comm_request_config_state();
+}
+
+void assistant_open_settings(void) {
+  comm_open_settings();
 }

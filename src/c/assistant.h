@@ -32,3 +32,12 @@ const char *assistant_question(void);
 const char *assistant_answer(void);
 const char *assistant_error(void);
 bool assistant_has_answer(void);
+
+// True once the phone reports that a Home Assistant address and token are set.
+bool assistant_is_configured(void);
+
+// Asks the phone again whether an address and token are set.
+void assistant_refresh_config(void);
+
+// Asks the phone to open the settings page.
+void assistant_open_settings(void);

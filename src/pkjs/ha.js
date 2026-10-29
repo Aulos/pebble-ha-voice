@@ -1,0 +1,205 @@
+// Talks to Home Assistant on behalf of the watch.
+//
+// The watch sends a question in AppMessage chunks; this module reassembles it,
+// posts it to the Home Assistant Assist conversation API, and sends the reply
+// text back in chunks. The address and the long-lived token live on the phone,
+// never on the watch.
+
+var CHUNK_MAX = 180;
+var REQUEST_TIMEOUT_MS = 20000;
+
+// AppMessage commands, mirrored from src/c/comm.c.
+var CMD_QUESTION = 1;
+var CMD_PING = 2;
+var CMD_OPEN_SETTINGS = 3;
+var CMD_STATUS = 10;
+var CMD_ANSWER = 11;
+var CMD_CONFIG_STATE = 12;
+
+var STATUS_THINKING = 0;
+var STATUS_ERROR = 1;
+
+var settings = require('./settings');
+var settingsPage = require('./settings-page');
+
+function sendStatus(id, status, message) {
+  var payload = { cmd: CMD_STATUS, id: id, status: status };
+  if (message) {
+    payload.text = message;
+  }
+  Pebble.sendAppMessage(payload);
+}
+
+function sendConfigState() {
+  var configured = settings.isConfigured();
+  Pebble.sendAppMessage({ cmd: CMD_CONFIG_STATE, configured: configured ? 1 : 0 });
+  return configured;
+}
+
+function sendAnswer(id, text) {
+  var chunks = [];
+  for (var offset = 0; offset < text.length; offset += CHUNK_MAX) {
+    chunks.push(text.substr(offset, CHUNK_MAX));
+  }
+  if (chunks.length === 0) {
+    chunks.push('');
+  }
+  chunks.forEach(function (chunk, index) {
+    Pebble.sendAppMessage({
+      cmd: CMD_ANSWER,
+      id: id,
+      seq: index,
+      total: chunks.length,
+      text: chunk,
+    });
+  });
+}
+
+// Pulls the spoken reply out of a Home Assistant conversation response.
+function extractSpeech(body) {
+  var response = body && body.response;
+  if (!response) {
+    return '';
+  }
+  var speech = response.speech || {};
+  if (speech.plain && speech.plain.speech) {
+    return speech.plain.speech;
+  }
+  if (speech.speech) {
+    return speech.speech;
+  }
+  if (response.response_type === 'action_done') {
+    return 'Done.';
+  }
+  return '';
+}
+
+function askHomeAssistant(id, question) {
+  var config = settings.read();
+  if (!settings.isConfigured(config)) {
+    sendStatus(id, STATUS_ERROR, 'Set the address and token in settings');
+    return;
+  }
+
+  var url = config.baseUrl + '/api/conversation/process';
+  var body = { text: question };
+  if (config.pipeline) {
+    body.agent_id = config.pipeline;
+  }
+  if (config.language) {
+    body.language = config.language;
+  }
+
+  var xhr = new XMLHttpRequest();
+  var finished = false;
+
+  function fail(message) {
+    if (finished) {
+      return;
+    }
+    finished = true;
+    sendStatus(id, STATUS_ERROR, message);
+  }
+
+  xhr.onload = function () {
+    if (finished) {
+      return;
+    }
+    if (xhr.status < 200 || xhr.status >= 300) {
+      if (xhr.status === 401) {
+        fail('Token rejected (401)');
+      } else if (xhr.status === 404) {
+        fail('Assist API not found (404)');
+      } else {
+        fail('Home Assistant error ' + xhr.status);
+      }
+      return;
+    }
+    var parsed;
+    try {
+      parsed = JSON.parse(xhr.responseText);
+    } catch (e) {
+      fail('Bad response from Home Assistant');
+      return;
+    }
+    var speech = extractSpeech(parsed);
+    if (!speech) {
+      fail('No reply from Assist');
+      return;
+    }
+    finished = true;
+    sendAnswer(id, speech);
+  };
+
+  xhr.onerror = function () {
+    fail('Cannot reach Home Assistant');
+  };
+
+  xhr.open('POST', url, true);
+  xhr.timeout = REQUEST_TIMEOUT_MS;
+  xhr.ontimeout = function () {
+    fail('Home Assistant timed out');
+  };
+  xhr.setRequestHeader('Content-Type', 'application/json');
+  xhr.setRequestHeader('Authorization', 'Bearer ' + config.token);
+  sendStatus(id, STATUS_THINKING);
+  xhr.send(JSON.stringify(body));
+}
+
+// ---------------------------------------------------------------------------
+// Incoming AppMessage
+// ---------------------------------------------------------------------------
+
+var pending = {
+  id: null,
+  total: 0,
+  next: 0,
+  parts: [],
+};
+
+function handleQuestion(message) {
+  if (message.seq === 0) {
+    pending.id = message.id;
+    pending.total = message.total || 1;
+    pending.next = 0;
+    pending.parts = [];
+  }
+  if (pending.id !== message.id || message.seq !== pending.next) {
+    return;
+  }
+  pending.parts.push(message.text || '');
+  pending.next += 1;
+  if (pending.next >= pending.total) {
+    var question = pending.parts.join('');
+    pending.parts = [];
+    askHomeAssistant(pending.id, question);
+  }
+}
+
+function init() {
+  Pebble.addEventListener('appmessage', function (event) {
+    var message = event.payload || {};
+    switch (message.cmd) {
+      case CMD_QUESTION:
+        handleQuestion(message);
+        break;
+      case CMD_PING:
+        sendConfigState();
+        break;
+      case CMD_OPEN_SETTINGS:
+        // The watch asked for the settings page; open it on the phone.
+        Pebble.openURL(settingsPage.buildUrl());
+        break;
+      default:
+        break;
+    }
+  });
+}
+
+module.exports = {
+  init: init,
+  sendConfigState: sendConfigState,
+  isConfigured: function () {
+    return settings.isConfigured();
+  },
+};

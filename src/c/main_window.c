@@ -3,6 +3,7 @@
 #include "answer_window.h"
 #include "assistant.h"
 #include "gesture.h"
+#include "menu_window.h"
 #include "mic_icon.h"
 #include "theme.h"
 
@@ -16,6 +17,7 @@ static GRect s_hint_rect;
 static GPoint s_mic_center;
 static int16_t s_mic_radius;
 static bool s_mic_pressed;
+static int16_t s_pan_dy;
 
 static AppTimer *s_anim_timer;
 static int s_anim_phase;
@@ -74,6 +76,14 @@ static void prv_draw_state_text(GContext *ctx, AssistantState state) {
     return;
   }
 
+  if (state == AssistantIdle && !assistant_is_configured()) {
+    graphics_context_set_text_color(ctx, THEME_LISTEN);
+    graphics_draw_text(ctx, "NOT SET UP", fonts_get_system_font(FONT_KEY_GOTHIC_14_BOLD),
+                       GRect(s_status_rect.origin.x, s_status_rect.origin.y, s_status_rect.size.w, 20),
+                       GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
+    return;
+  }
+
   const char *label = NULL;
   if (state == AssistantListening) {
     label = "LISTENING";
@@ -101,7 +111,11 @@ static void prv_draw_hint(GContext *ctx, AssistantState state) {
       hint = "SELECT TO CANCEL";
       break;
     default:
-      hint = gesture_touch_available() ? "TAP OR PRESS SELECT" : "PRESS SELECT";
+      if (!assistant_is_configured()) {
+        hint = gesture_touch_available() ? "TAP FOR SETTINGS" : "DOWN FOR SETTINGS";
+      } else {
+        hint = gesture_touch_available() ? "TAP OR PRESS SELECT" : "PRESS SELECT";
+      }
       break;
   }
 
@@ -161,9 +175,7 @@ static void prv_canvas_update(Layer *layer, GContext *ctx) {
   mic_icon_draw(ctx, s_mic_center, s_mic_radius, THEME_GLYPH);
 
   prv_draw_state_text(ctx, state);
-  if (state != AssistantError) {
-    prv_draw_hint(ctx, state);
-  }
+  prv_draw_hint(ctx, state);
 }
 
 // ---------------------------------------------------------------------------
@@ -182,6 +194,9 @@ static void prv_activate(void) {
   AssistantState state = assistant_get_state();
   if (state == AssistantThinking) {
     assistant_cancel();
+  } else if (!assistant_is_configured()) {
+    // Nothing can be asked yet: open the page on the phone that fixes it.
+    assistant_open_settings();
   } else {
     assistant_start();
   }
@@ -197,9 +212,14 @@ static void prv_up_click(ClickRecognizerRef recognizer, void *context) {
   }
 }
 
+static void prv_down_click(ClickRecognizerRef recognizer, void *context) {
+  menu_window_push();
+}
+
 static void prv_click_config_provider(void *context) {
   window_single_click_subscribe(BUTTON_ID_SELECT, prv_select_click);
   window_single_click_subscribe(BUTTON_ID_UP, prv_up_click);
+  window_single_click_subscribe(BUTTON_ID_DOWN, prv_down_click);
 }
 
 // ---------------------------------------------------------------------------
@@ -231,6 +251,14 @@ static void prv_touch_pan(int16_t dx, int16_t dy, bool ended, void *context) {
     s_mic_pressed = false;
     layer_mark_dirty(s_canvas);
   }
+  s_pan_dy += dy;
+  if (ended) {
+    // A downward swipe opens the menu, like the down button.
+    if (s_pan_dy > 30) {
+      menu_window_push();
+    }
+    s_pan_dy = 0;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -254,6 +282,9 @@ static void prv_answer_ready(void *context) {
 }
 
 static void prv_window_appear(Window *window) {
+  s_pan_dy = 0;
+  // The phone is the only side that knows whether the app is set up.
+  assistant_refresh_config();
   gesture_begin(&(GestureHandlers){
     .tap = prv_touch_tap,
     .pan = prv_touch_pan,
