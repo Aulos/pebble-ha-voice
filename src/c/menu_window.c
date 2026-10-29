@@ -33,8 +33,8 @@ static void prv_draw_row(GContext *ctx, const Layer *cell, MenuIndex *index, voi
   GColor subtitle_color = selected ? THEME_GLYPH : THEME_DIM;
 
   const char *titles[] = {"Ask again", "Settings", "Test connection"};
-  const char *subtitles[] = {"Talk to Home Assistant", "Address and token, on the phone",
-                             "Check the address and token"};
+  // Kept short: the 144 pixel platforms cut a longer line off at the edge.
+  const char *subtitles[] = {"Talk to Home Assistant", "Set on the phone", "Check the setup"};
   const char *title = titles[index->row];
   const char *subtitle = subtitles[index->row];
 

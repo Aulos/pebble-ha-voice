@@ -67,14 +67,18 @@ name comes from your developer profile).
 | --- | --- | --- |
 | Icon | `icon-144.png` | 144 × 144 |
 | Banner | `banner-720x320.png` | 720 × 320 |
-| Screenshot, main screen | `screenshots/emery-main.png` | 200 × 228 |
-| Screenshot, answer | `screenshots/emery-answer.png` | 200 × 228 |
-| Screenshot, menu | `screenshots/emery-menu.png` | 200 × 228 |
-| Screenshot, connection test | `screenshots/emery-test.png` | 200 × 228 |
+| Screenshots, Pebble Time 2 (`emery`) | `screenshots/emery-*.png` | 200 × 228 |
+| Screenshots, Pebble Time and Time Steel (`basalt`) | `screenshots/basalt-*.png` | 144 × 168 |
 
-The screenshots are the `emery` platform, which is the Pebble Time 2. The portal
-keeps a separate screenshot set for each platform, so the app also needs a set
-at 144 × 168 for `basalt` and `flint` if those are listed.
+The portal keeps a separate screenshot set for each platform the app supports.
+
+- `emery` (Pebble Time 2): main screen, answer, menu, connection test.
+- `basalt` (Pebble Time, Time Steel): main screen, answer, menu.
+- `flint` (Pebble 2): same screen size as `basalt`, so the `basalt` set fits it,
+  but the portal wants its own upload.
+
+There is no touchscreen on `basalt` and `flint`, so their main screen says PRESS
+SELECT where the Time 2 says TAP OR PRESS SELECT.
 
 Rebuild the images after an icon or screen change:
 

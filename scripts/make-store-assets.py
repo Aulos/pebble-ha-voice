@@ -7,7 +7,8 @@ Writes into docs/store/:
   icon-144.png            the 144 pixel icon the appstore asks for (also made by
                           make-icons.py, which this script leaves alone)
   banner-720x320.png      the banner at the top of the app's page
-  screenshots/*.png       the watch screens, one set for the 200x228 platform
+  screenshots/*.png       the watch screens, one set per platform: emery at
+                          200x228, basalt at 144x168
 
 Needs cairosvg for the icon:  .venv/bin/pip install cairosvg
 """
@@ -27,6 +28,11 @@ BANNER = (720, 320)
 CYAN = (0, 170, 255)
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
+
+SCREENSHOTS = (
+    ("emery", ("main", "answer", "menu", "test")),
+    ("basalt", ("main", "answer", "menu")),
+)
 
 FONT_BOLD = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 FONT_REGULAR = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
@@ -72,15 +78,19 @@ def main():
     print("wrote", os.path.normpath(banner_path), f"({BANNER[0]}x{BANNER[1]})")
 
     # The appstore wants the screens at the watch's own resolution, one set for
-    # each platform it runs on.
-    for name in ("main", "answer", "menu", "test"):
-        source = os.path.join(SCREENS, name + ".png")
-        if not os.path.exists(source):
-            print("skipped", name, "(no screenshot)")
-            continue
-        target = os.path.join(OUT, "screenshots", f"emery-{name}.png")
-        Image.open(source).convert("RGB").save(target)
-        print("wrote", os.path.normpath(target))
+    # each platform it runs on. The emery screens are 200 by 228 and the basalt
+    # ones 144 by 168, so each platform keeps its own files.
+    for platform, names in SCREENSHOTS:
+        for name in names:
+            source = os.path.join(SCREENS, name + ".png")
+            if platform != "emery":
+                source = os.path.join(SCREENS, f"{platform}-{name}.png")
+            if not os.path.exists(source):
+                print("skipped", platform, name, "(no screenshot)")
+                continue
+            target = os.path.join(OUT, "screenshots", f"{platform}-{name}.png")
+            Image.open(source).convert("RGB").save(target)
+            print("wrote", os.path.normpath(target))
 
 
 if __name__ == "__main__":
