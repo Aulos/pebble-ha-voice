@@ -1,7 +1,7 @@
 {
   "name": "ha-voice",
   "author": "Pawel Z.",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "keywords": [
     "pebble-app"
   ],
@@ -43,6 +43,9 @@
           "file": "images/app_icon.png"
         }
       ]
-    }
+    },
+    "capabilities": [
+      "configurable"
+    ]
   }
 }

@@ -26,14 +26,14 @@ var FIELDS = [
     label: 'Language (optional)',
     placeholder: 'en',
     type: 'text',
-    hint: 'Passed to Assist. Leave empty to use your Home Assistant default.',
+    hint: 'A code such as en, de or pl, not a language name. Leave empty for the default.',
   },
   {
     key: 'pipeline',
     label: 'Assist pipeline (optional)',
-    placeholder: 'preferred',
+    placeholder: 'conversation.home_assistant',
     type: 'text',
-    hint: 'Pipeline or agent id. Leave empty to use the preferred one.',
+    hint: 'The agent id from Assist settings, such as conversation.home_assistant. Leave empty to use the preferred agent.',
   },
 ];
 

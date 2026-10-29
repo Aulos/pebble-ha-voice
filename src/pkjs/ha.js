@@ -109,6 +109,20 @@ function extractSpeech(body) {
   return '';
 }
 
+// Pulls Home Assistant's own complaint out of an error body, so the watch can
+// say what is wrong instead of just a number.
+function describeError(body) {
+  try {
+    var parsed = JSON.parse(body);
+    if (parsed && parsed.message) {
+      return String(parsed.message).slice(0, 60);
+    }
+  } catch (e) {
+    // Not JSON; fall through.
+  }
+  return String(body || '').slice(0, 60);
+}
+
 function askHomeAssistant(id, question) {
   var config = settings.read();
   if (!settings.isConfigured(config)) {
@@ -141,10 +155,13 @@ function askHomeAssistant(id, question) {
       return;
     }
     if (xhr.status < 200 || xhr.status >= 300) {
+      console.log('HA ' + xhr.status + ': ' + xhr.responseText);
       if (xhr.status === 401) {
         fail('Token rejected (401)');
       } else if (xhr.status === 404) {
         fail('Assist API not found (404)');
+      } else if (xhr.status === 400) {
+        fail('Bad request (400) ' + describeError(xhr.responseText));
       } else {
         fail('Home Assistant error ' + xhr.status);
       }

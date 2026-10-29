@@ -13,6 +13,32 @@ function normalizeBaseUrl(baseUrl) {
   return url.replace(/\/+$/, '');
 }
 
+// Home Assistant wants a language code such as "en", not a language name. A
+// name makes Assist answer "I could not understand that" instead of failing
+// loudly, so the obvious wrong values are turned into "use the default".
+function normalizeLanguage(language) {
+  var value = (language || '').trim();
+  if (!value) {
+    return '';
+  }
+  if (/^[a-z]{2,3}(-[a-z]{2,4})?$/i.test(value) === false) {
+    return '';
+  }
+  return value.toLowerCase();
+}
+
+// The pipeline field holds an agent id. "preferred" and "default" look like
+// sensible values but Home Assistant rejects them with a 400, so they mean
+// "leave it out".
+function normalizeAgent(pipeline) {
+  var value = (pipeline || '').trim();
+  var lower = value.toLowerCase();
+  if (lower === 'preferred' || lower === 'default' || lower === 'none') {
+    return '';
+  }
+  return value;
+}
+
 function read() {
   var raw = {};
   try {
@@ -24,8 +50,8 @@ function read() {
   return {
     baseUrl: normalizeBaseUrl(raw.baseUrl),
     token: (raw.token || '').trim(),
-    language: (raw.language || '').trim(),
-    pipeline: (raw.pipeline || '').trim(),
+    language: normalizeLanguage(raw.language),
+    pipeline: normalizeAgent(raw.pipeline),
   };
 }
 
@@ -41,6 +67,8 @@ function isConfigured(settings) {
 module.exports = {
   read: read,
   write: write,
+  normalizeLanguage: normalizeLanguage,
+  normalizeAgent: normalizeAgent,
   isConfigured: isConfigured,
   normalizeBaseUrl: normalizeBaseUrl,
 };
