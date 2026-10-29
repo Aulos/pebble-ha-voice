@@ -34,7 +34,12 @@ static void prv_layout(GRect bounds) {
   s_mic_radius = short_side * 26 / 100;
   s_mic_center = GPoint(w / 2, (28 + (h - 26)) / 2 - 6);
   s_status_rect = GRect(4, s_mic_center.y + s_mic_radius + 6, w - 8, 36);
+#if defined(PBL_ROUND)
+  // The bottom of a round screen is narrow, so the hint sits a little higher.
+  s_hint_rect = GRect(0, h - 34, w, 20);
+#else
   s_hint_rect = GRect(0, h - 24, w, 20);
+#endif
 }
 
 // ---------------------------------------------------------------------------

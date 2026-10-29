@@ -26,9 +26,10 @@ Everything works with buttons and, on the Time 2, with touch.
 
 ## Requirements
 
-- A Pebble Time 2 (`emery`). The app also builds for `basalt` and `flint`, the
-  other platforms with a microphone; those have no touchscreen, so the buttons
-  are the only input there.
+- A Pebble with a microphone: Pebble Time 2 (`emery`), Pebble Round 2
+  (`gabbro`), Pebble Time or Time Steel (`basalt`), or Pebble 2 (`flint`).
+  Every other Pebble has no microphone. Only the Time 2 and the Round 2 have a
+  touchscreen; on the others the buttons are the only input.
 - Home Assistant reachable from the phone, with the Assist conversation API.
 - A long-lived access token: in Home Assistant, open your profile, go to
   Security, and create one under *Long-lived access tokens*.

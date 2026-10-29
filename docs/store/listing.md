@@ -44,14 +44,20 @@ name comes from your developer profile).
 > - Dictation is done by the Pebble app and your phone's speech service, as in
 >   any other Pebble app. Only the transcribed text goes to your Home Assistant
 >   server; nothing goes anywhere else.
-> - Works on Pebble Time 2, Pebble Time, Pebble Time Steel and Pebble 2. All of
->   them have a microphone.
+> - Works on Pebble Time 2, Pebble Round 2, Pebble Time, Pebble Time Steel and
+>   Pebble 2. Every one of them has a microphone.
 > - If your Home Assistant uses a self-signed certificate over https, use the
 >   http address instead.
 
-## Release notes, version 1.0.1
+## Release notes, version 1.0.2
 
 > First public version.
+>
+> - Works on Pebble Time 2, Pebble Round 2, Pebble Time, Pebble Time Steel and
+>   Pebble 2.
+> - On the black and white Pebbles the selected menu row is white, so its text
+>   stays readable.
+> - On the round Pebble Round 2 the menu rows follow the edge of the screen.
 >
 > - Tap the microphone on the main screen, or press SELECT, to ask a question.
 > - The answer scrolls if it is longer than the screen; ASK AGAIN at the bottom
@@ -69,16 +75,19 @@ name comes from your developer profile).
 | Banner | `banner-720x320.png` | 720 × 320 |
 | Screenshots, Pebble Time 2 (`emery`) | `screenshots/emery-*.png` | 200 × 228 |
 | Screenshots, Pebble Time and Time Steel (`basalt`) | `screenshots/basalt-*.png` | 144 × 168 |
+| Screenshots, Pebble 2 (`flint`) | `screenshots/flint-*.png` | 144 × 168 |
+| Screenshots, Pebble Round 2 (`gabbro`) | `screenshots/gabbro-*.png` | 260 × 260 |
 
 The portal keeps a separate screenshot set for each platform the app supports.
 
 - `emery` (Pebble Time 2): main screen, answer, menu, connection test.
 - `basalt` (Pebble Time, Time Steel): main screen, answer, menu.
-- `flint` (Pebble 2): same screen size as `basalt`, so the `basalt` set fits it,
-  but the portal wants its own upload.
+- `flint` (Pebble 2): main screen, answer, menu. Black and white, like `basalt`
+  but 1-bit, so the accent color is white there.
+- `gabbro` (Pebble Round 2): main screen, answer, menu. Round, 260 × 260.
 
 There is no touchscreen on `basalt` and `flint`, so their main screen says PRESS
-SELECT where the Time 2 says TAP OR PRESS SELECT.
+SELECT where the Time 2 and the Round 2 say TAP OR PRESS SELECT.
 
 Rebuild the images after an icon or screen change:
 

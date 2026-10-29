@@ -8,7 +8,23 @@
 
 #define FOOTER_HEIGHT 30
 #define QUESTION_HEIGHT 34
+
+// A round screen has no corners. The question and the footer move in from the
+// edge and the answer keeps a wider margin, so nothing lands where the circle
+// has already cut the screen away.
+#if defined(PBL_ROUND)
+#define TEXT_INSET 26
+#define HEADER_INSET 56
+#define HEADER_TOP 26
+#define FOOTER_LIFT 18
+#define FOOTER_CENTERED true
+#else
 #define TEXT_INSET 4
+#define HEADER_INSET 0
+#define HEADER_TOP 0
+#define FOOTER_LIFT 0
+#define FOOTER_CENTERED false
+#endif
 
 static Window *s_window;
 static ScrollLayer *s_scroll;
@@ -47,14 +63,25 @@ static void prv_layout(GRect bounds) {
   int16_t w = bounds.size.w;
   int16_t h = bounds.size.h;
 
-  s_footer_frame = GRect(0, h - FOOTER_HEIGHT, w, FOOTER_HEIGHT);
+  s_footer_frame = GRect(0, h - FOOTER_HEIGHT - FOOTER_LIFT, w, FOOTER_HEIGHT);
   s_chip_radius = 14;
   s_chip_center = GPoint(20, s_footer_frame.size.h / 2);
 
-  layer_set_frame(s_header, GRect(0, 0, w, QUESTION_HEIGHT));
+  layer_set_frame(s_header, GRect(HEADER_INSET, HEADER_TOP, w - HEADER_INSET * 2, QUESTION_HEIGHT));
+
+  int16_t scroll_top = HEADER_TOP + QUESTION_HEIGHT + 2;
   layer_set_frame(scroll_layer_get_layer(s_scroll),
-                  GRect(0, QUESTION_HEIGHT + 2, w, h - QUESTION_HEIGHT - 2 - FOOTER_HEIGHT));
+                  GRect(0, scroll_top, w, s_footer_frame.origin.y - scroll_top));
   layer_set_frame(s_footer, s_footer_frame);
+
+  if (FOOTER_CENTERED) {
+    // The chip and its label are centred as one group.
+    GSize label = graphics_text_layout_get_content_size(
+        "ASK AGAIN", fonts_get_system_font(FONT_KEY_GOTHIC_14_BOLD), GRect(0, 0, 200, 20),
+        GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft);
+    int16_t group = s_chip_radius * 2 + 8 + label.w;
+    s_chip_center.x = (w - group) / 2 + s_chip_radius;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -63,14 +90,19 @@ static void prv_layout(GRect bounds) {
 
 static void prv_header_update(Layer *layer, GContext *ctx) {
   GRect bounds = layer_get_bounds(layer);
+  int16_t text_left = 0;
 
-  // Accent bar marking the question the answer belongs to.
+#if !defined(PBL_ROUND)
+  // Accent bar marking the question the answer belongs to. On a round screen
+  // there is no room for it beside the question.
   graphics_context_set_fill_color(ctx, THEME_MIC);
   graphics_fill_rect(ctx, GRect(5, 5, 3, bounds.size.h - 10), 1, GCornersAll);
+  text_left = 8;
+#endif
 
   graphics_context_set_text_color(ctx, THEME_DIM);
   graphics_draw_text(ctx, assistant_question(), fonts_get_system_font(FONT_KEY_GOTHIC_14),
-                     GRect(13, 2, bounds.size.w - 18, bounds.size.h - 4),
+                     GRect(text_left, 2, bounds.size.w - text_left, bounds.size.h - 4),
                      GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
 }
 

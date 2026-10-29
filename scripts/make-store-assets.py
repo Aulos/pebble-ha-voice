@@ -8,7 +8,8 @@ Writes into docs/store/:
                           make-icons.py, which this script leaves alone)
   banner-720x320.png      the banner at the top of the app's page
   screenshots/*.png       the watch screens, one set per platform: emery at
-                          200x228, basalt at 144x168
+                          200x228, basalt and flint at 144x168, gabbro at
+                          260x260
 
 Needs cairosvg for the icon:  .venv/bin/pip install cairosvg
 """
@@ -32,6 +33,8 @@ BLACK = (0, 0, 0)
 SCREENSHOTS = (
     ("emery", ("main", "answer", "menu", "test")),
     ("basalt", ("main", "answer", "menu")),
+    ("flint", ("main", "answer", "menu")),
+    ("gabbro", ("main", "answer", "menu")),
 )
 
 FONT_BOLD = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"

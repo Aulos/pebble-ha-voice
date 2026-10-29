@@ -1,7 +1,7 @@
 {
   "name": "ha-voice",
   "author": "Pawel Z.",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "keywords": [
     "pebble-app"
   ],
@@ -15,7 +15,8 @@
     "targetPlatforms": [
       "emery",
       "basalt",
-      "flint"
+      "flint",
+      "gabbro"
     ],
     "watchapp": {
       "watchface": false
