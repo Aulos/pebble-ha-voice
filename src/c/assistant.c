@@ -24,7 +24,10 @@ static void prv_comm_answer(const char *text, void *context);
 static void prv_comm_error(const char *message, void *context);
 static void prv_comm_config_state(bool configured, void *context);
 
-static bool s_configured;
+// Optimistic until the phone answers: the phone's JavaScript takes a moment to
+// load, and a false 'NOT SET UP' flash on every launch would be worse than
+// asking once and being told.
+static bool s_configured = true;
 
 static void prv_set_state(AssistantState state) {
   if (s_state == state) {
@@ -88,6 +91,9 @@ static void prv_comm_thinking(void *context) {
 
 static void prv_comm_answer(const char *text, void *context) {
   snprintf(s_answer, sizeof(s_answer), "%s", text ? text : "");
+  // A short buzz tells the user the answer is ready, so they can look at the
+  // watch without watching it.
+  vibes_short_pulse();
   prv_set_state(AssistantIdle);
   if (s_answer_handler) {
     s_answer_handler(s_answer_context);
