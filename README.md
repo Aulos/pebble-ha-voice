@@ -60,7 +60,10 @@ answer     <--AppMessage--        <--response.speech.plain.speech-----
 ```
 
 Both directions are chunked at 180 bytes per message, so a long transcription
-and a long answer are not limited by the size of one AppMessage.
+and a long answer are not limited by the size of one AppMessage. The phone sends
+one chunk at a time and waits for the watch to acknowledge it, because a burst
+overflows the AppMessage queue. The watch keeps up to 1024 bytes of the reply
+and ends a longer one with `...`.
 
 | File | Purpose |
 | --- | --- |
@@ -86,7 +89,8 @@ python3 scripts/mock-ha.py --port 8123 --token test-token -v
 
 Then set the address to `http://localhost:8123` and the token to `test-token`.
 It answers on the words `kitchen`, `temperature`, `hello`, and `long` (a reply
-long enough to need several chunks).
+long enough to need several chunks). `verylong` returns about 1700 characters,
+which the watch cuts at 1024 and marks with `...`.
 
 In the emulator, dictation comes from `pebble transcribe`:
 

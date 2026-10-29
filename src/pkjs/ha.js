@@ -44,15 +44,49 @@ function sendAnswer(id, text) {
   if (chunks.length === 0) {
     chunks.push('');
   }
-  chunks.forEach(function (chunk, index) {
-    Pebble.sendAppMessage({
+
+  // One chunk at a time: sending a long reply in a burst overflows the
+  // AppMessage queue, and the watch would then wait for chunks that never
+  // arrive. Each chunk waits for the previous one to be acknowledged, with one
+  // retry, before the next goes out.
+  var index = 0;
+
+  function sendNext() {
+    if (index >= chunks.length) {
+      return;
+    }
+    var seq = index;
+    var message = {
       cmd: CMD_ANSWER,
       id: id,
-      seq: index,
+      seq: seq,
       total: chunks.length,
-      text: chunk,
-    });
-  });
+      text: chunks[seq],
+    };
+    var retried = false;
+
+    function attempt() {
+      Pebble.sendAppMessage(
+        message,
+        function () {
+          index = seq + 1;
+          sendNext();
+        },
+        function () {
+          if (!retried) {
+            retried = true;
+            attempt();
+            return;
+          }
+          sendStatus(id, STATUS_ERROR, 'Could not reach the watch');
+        }
+      );
+    }
+
+    attempt();
+  }
+
+  sendNext();
 }
 
 // Pulls the spoken reply out of a Home Assistant conversation response.

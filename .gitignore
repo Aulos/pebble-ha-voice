@@ -1,4 +1,5 @@
 build/
+__pycache__/
 node_modules/
 *.pbw
 # Screenshots are committed; generated icons are kept with the sources.

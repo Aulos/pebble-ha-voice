@@ -24,6 +24,10 @@ REPLIES = {
         "Nothing else needs your attention right now."
     ),
 }
+# Longer than the watch keeps (1024 bytes), so the truncation path runs.
+VERY_LONG_REPLY = " ".join(
+    "The hallway sensor reports a temperature of %d degrees." % (18 + i) for i in range(30)
+)
 DEFAULT_REPLY = "Done."
 
 
@@ -68,7 +72,11 @@ class Handler(BaseHTTPRequestHandler):
             return
 
         text = (request.get("text") or "").strip()
-        reply = next((v for k, v in REPLIES.items() if k in text.lower()), DEFAULT_REPLY)
+        lowered = text.lower()
+        if "verylong" in lowered:
+            reply = VERY_LONG_REPLY
+        else:
+            reply = next((v for k, v in REPLIES.items() if k in lowered), DEFAULT_REPLY)
         if self.verbose:
             print(f"  <- {text!r} -> {reply!r}", flush=True)
 

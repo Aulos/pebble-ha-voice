@@ -4,7 +4,7 @@
 // room for the other keys in the dictionary.
 #define CHUNK_MAX 180
 #define QUESTION_MAX 512
-#define ANSWER_MAX 768
+#define ANSWER_MAX 1024
 #define ERROR_MAX 128
 
 #define CMD_QUESTION 1
@@ -30,6 +30,7 @@ static bool s_out_active;
 
 // Incoming answer assembly.
 static char s_in_text[ANSWER_MAX];
+static bool s_in_truncated;
 static uint16_t s_in_len;
 static uint16_t s_in_total;
 static uint16_t s_in_next;
@@ -133,6 +134,7 @@ static void prv_handle_answer_chunk(DictionaryIterator *iter, int32_t seq, int32
     s_in_next = 0;
     s_in_id = (uint32_t)id;
     s_in_active = true;
+    s_in_truncated = false;
     s_in_text[0] = '\0';
   }
 
@@ -142,7 +144,11 @@ static void prv_handle_answer_chunk(DictionaryIterator *iter, int32_t seq, int32
 
   size_t length = strlen(chunk);
   if (s_in_len + length >= ANSWER_MAX) {
-    length = ANSWER_MAX - s_in_len - 1;
+    // The reply is longer than the watch keeps. Cut it, and say so with an
+    // ellipsis rather than ending mid-sentence with no hint. Four bytes are
+    // kept back for that ellipsis and the terminator.
+    length = (ANSWER_MAX - 4 > s_in_len) ? ANSWER_MAX - 4 - s_in_len : 0;
+    s_in_truncated = true;
   }
   memcpy(s_in_text + s_in_len, chunk, length);
   s_in_len += length;
@@ -151,6 +157,11 @@ static void prv_handle_answer_chunk(DictionaryIterator *iter, int32_t seq, int32
 
   if (s_in_next >= s_in_total) {
     s_in_active = false;
+    if (s_in_truncated) {
+      memcpy(s_in_text + s_in_len, "...", 4);
+      s_in_len += 3;
+      s_in_truncated = false;
+    }
     if (s_handlers.on_answer) {
       s_handlers.on_answer(s_in_text, s_handlers.context);
     }
