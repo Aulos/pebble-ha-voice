@@ -14,6 +14,15 @@ REPLIES = {
     "kitchen": "Turned on the kitchen light.",
     "temperature": "It is 21 degrees outside.",
     "hello": "Hello. How can I help?",
+    # A reply longer than one AppMessage chunk, to exercise reassembly and
+    # scrolling on the watch.
+    "long": (
+        "The living room is warm at 23 degrees, the bedroom is cooler at 19 "
+        "degrees, and the kitchen is 21 degrees. The bathroom window is open. "
+        "The washing machine finishes in 42 minutes. Two lights are on: the "
+        "hall light and the desk lamp. The robot vacuum is docked and charged. "
+        "Nothing else needs your attention right now."
+    ),
 }
 DEFAULT_REPLY = "Done."
 

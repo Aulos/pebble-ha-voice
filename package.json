@@ -2,7 +2,9 @@
   "name": "ha-voice",
   "author": "Pawel Z.",
   "version": "1.0.0",
-  "keywords": ["pebble-app"],
+  "keywords": [
+    "pebble-app"
+  ],
   "private": true,
   "dependencies": {},
   "pebble": {
@@ -28,7 +30,19 @@
       "configured"
     ],
     "resources": {
-      "media": []
+      "media": [
+        {
+          "type": "png",
+          "name": "IMAGE_MENU_ICON",
+          "menuIcon": true,
+          "file": "images/menu_icon.png"
+        },
+        {
+          "type": "png",
+          "name": "IMAGE_APP_ICON",
+          "file": "images/app_icon.png"
+        }
+      ]
     }
   }
 }
